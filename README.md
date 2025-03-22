@@ -4,19 +4,24 @@ Milkid is a highly customizable distributed unique ID generator written in TypeS
 
 ## Preface
 
-JavaScript has many excellent distributed unique ID generators, but they are all mainly targeted at some specific scenarios and cannot be customized freely.
+JavaScript has many excellent distributed unique ID generators, but they mainly target specific scenarios and cannot be freely customized.
 
-- For database primary keys, we need IDs that are sorted in lexicographical order to avoid fragmentation in the database.
+• For database primary keys, we need lexicographically ordered IDs to avoid database fragmentation  
+• For distributed systems, we need IDs to be as uniform as possible to prevent hotspots  
+• For news websites, we want completely random IDs in URLs to prevent crawler traversal  
+• For short URL services, we need IDs in URLs to be as short as possible
 
-- For some distributed systems, we need IDs to be as evenly distributed as possible to avoid hotspots.
+Milkid allows high customization to meet different ID requirements across scenarios.
 
-- For news websites, we hope that the IDs in the URLs of news are completely random to avoid being traversed by crawlers.
+## See Also
 
-- For some short URL functions, we need the IDs in the URLs to be as short as possible.
+[nanoid](https://github.com/ai/nanoid) - A tiny, fast unique string ID generator.  
+[ulid](https://github.com/ulid/javascript) - A lexicographically sortable unique string ID generator.  
+[cuid2](https://github.com/paralleldrive/cuid2) - A more security-considerate unique ID generator.
 
-Milkid can be highly customized to meet our requirements for IDs in different scenarios.
+## Other Languages
 
-Moreover, the encoding table of Milkid is very safe in common scenarios. You can even use it in URLs or the `class` attribute of HTML (the `class` must start with a letter, and the first character of each segment of Milkid will definitely be a letter).
+[Python](https://github.com/kawaiior/milkid-for-python) - kawaiior
 
 ## Installation
 
@@ -28,125 +33,76 @@ npm i milkid
 
 ```ts
 const idGenerator = defineIdGenerator({
-    length: 24,
-    hyphen: false,
-    fingerprint: false,
-    timestamp: true,
-    sequential: true,
-    magicNumber: 12345678,
+  length: 24,
+  timestamp: true,
+  sequential: true,
 });
 
-console.log(idGenerator.createId()); // AWdM7nLAX5XA5DJAfRD8TjtY
+console.log(idGenerator.createId()); // 0UgBwxhJyuWVA9o1YFVxAtaL
 ```
 
 ## Timestamp
 
-When the IDs we generate are used as database primary keys, it's better that our primary keys are incremented. If we use an unordered ID generator like UUID, it will cause the leaf nodes of our database index to split and merge frequently.
+When using generated IDs as database primary keys, it's best to have incrementally ordered IDs. Using unordered generators like UUID could cause frequent splitting and merging of database index leaf nodes.
 
-Placing the millisecond-level timestamp at the beginning of the ID naturally becomes the key to making our IDs as ordered as possible. Meanwhile, the millisecond-level timestamp can also effectively avoid the probability of ID collisions: as long as two identical IDs are not generated within one millisecond, there will be no ID duplication.
+Placing millisecond-level timestamps at the beginning of IDs naturally ensures ordering. The millisecond precision also effectively reduces collision probability - no duplicates will occur unless two IDs are generated within the same millisecond.
 
-We can enable the timestamp function by setting the `timestamp` option to `true`.
+Enable this feature by setting the `timestamp` option to `true`.
 
-## Monotonically Increasing
+## Monotonic Increment
 
-Although we have no way to ensure that the insertion order of IDs is as strictly guaranteed as that of database primary keys, we can get very close. By enabling the timestamp function, we have already achieved the order of IDs within the same millisecond. By setting the `sequential` option to `true`, we can make the IDs generated within the same millisecond in the same process automatically increase by `1` to ensure the order of the results as much as possible. 
-
-## Fingerprint
-
-One annoying thing about UUID and some other ID generation algorithms is that they require users to provide machine IDs. However, for horizontally scalable systems nowadays, the number of running machines is not determined in advance.
-
-When you set the `fingerprint` option to `true`, you can pass a string or a Buffer as a fingerprint when generating an ID. Setting a fingerprint can reduce the probability of ID collisions, but it is not mandatory. As long as the length of the ID is long enough, it is also sufficient to avoid collision problems.
-
-Regardless of what content your fingerprint passes and how long it is, this content will be hashed and then used as part of the ID. You can choose to pass a fingerprint or not according to your needs.
-
-Ideally, we can concatenate the following contents to form a fingerprint: user ID, UserAgent, machine ID, process ID, internal network IP address, system startup time, session counter.
-
-Of course, not all the contents need to be used as fingerprints. Some contents may be too closely coupled with the business or may be difficult to obtain in the environment. You can choose which contents to pass according to your needs. And if your ID is long enough, even without a fingerprint, the probability of collision will be low enough.
-
-```ts
-const idGenerator = defineIdGenerator({
-    fingerprint: true,
-    timestamp: true,
-});
-
-const fingerprint = `${context.USER_ID}-${navigator.userAgent}-${process.env.MACHINE_ID}-${process.pid}-${getLocalIp()}-${process.uptime()}-${sessionStorage.getItem('sessionCounter')}`;
-
-console.log(idGenerator.createId(fingerprint));
-```
-
-## Composition
-
-When you enable the timestamp and fingerprint, the ID generated by Milkid consists of the following parts:
-
-```bash
-          Aba3eJC          -      nY5EC      -   2z2SXrxk09j0
- Millisecond timestamp (8) | Fingerprint (5) | Random Bits (11)
-```
-
-The encoding table of Milkid consists of `0-9a-zA-Z`. Each segment of Milkid is very safe in common scenarios. You can even use it in URLs or the `class` attribute of HTML (the browser requires that the `class` must start with a letter, and the first character of each segment of Milkid will definitely be a letter).
+While we can't strictly guarantee insertion order like database auto-increment keys, we can approximate it. With timestamps enabled, we achieve intra-millisecond ordering. Setting `sequential: true` adds auto-increment within the same millisecond and process to further ensure sequence.
 
 ## Collision Probability
 
-By default, the length of the ID generated by Milkid is `24`. With the timestamp function enabled, 243 trillion IDs need to be generated within the same millisecond to have a 1% probability of at least one collision occurring. 
+By default, Milkid generates 24-character IDs. With timestamps enabled, there's a 1% probability of collision only after generating 243 trillion IDs within the same millisecond.
 
 ## Options
 
-Option | Default Value | Description
----|---|---
-`length` | `24` | The length of the generated ID.
-`timestamp` | `-` | Whether to use the timestamp as the beginning of the ID, which can effectively avoid fragmentation in the database.
-`hyphen` | `false` | Whether to use hyphens to separate the various parts of the ID.
-`fingerprint` | `false` | Whether to use a fingerprint as part of the ID. After enabling it, a fingerprint needs to be passed when generating an ID.
-`sequential` | `true` | Whether it is sequential. When the IDs generated by the same JavaScript process are ordered, it will increase by 1 within the current millisecond each time, which is very important for the database.
+| Option       | Default | Description                                                                                  |
+| ------------ | ------- | -------------------------------------------------------------------------------------------- |
+| `length`     | `24`    | Length of the generated ID                                                                   |
+| `timestamp`  | `-`     | Whether to prepend timestamp to ID (helps avoid database fragmentation)                      |
+| `sequential` | `-`     | Enables intra-millisecond auto-increment for ordered IDs (critical for database performance) |
 
 ## Use Cases
 
-We have listed several scenarios and provided recommended configurations for them. Note that the fingerprint function is not enabled in the following configurations.
+Here are recommended configurations for common scenarios:
 
-### Database Primary Keys
+### Database Primary Key
 
-In the database, we enable the `timestamp` and `sequential` options to ensure that the generated IDs are as ordered as possible, which can effectively avoid fragmentation in the database.
+Enable both `timestamp` and `sequential` to ensure ordered IDs and prevent fragmentation.
+
+Note ⚠️ Milkid uses case-sensitive characters. Ensure the database uses case-sensitive collation (e.g., `utf8mb4_bin`) for primary keys to maintain sort order during bulk inserts.
 
 ```ts
 const idGenerator = defineIdGenerator({
-    length: 24,
-    timestamp: true,
-    sequential: true,
+  length: 24,
+  timestamp: true,
+  sequential: true,
 });
 ```
 
 ### Distributed Systems
 
-In distributed systems, we need to disable the `timestamp` and `sequential` options to ensure that the generated IDs are as evenly distributed as possible, which can avoid hotspots.
+Disable both options to ensure uniform ID distribution and avoid hotspots.
 
 ```ts
 const idGenerator = defineIdGenerator({
-    length: 24,
-    timestamp: false,
-    sequential: false,
+  length: 24,
+  timestamp: false,
+  sequential: false,
 });
 ```
 
 ### Short URLs
 
-In short URLs, we need the IDs to be as short as possible.
+Minimize ID length for compact URLs:
 
 ```ts
 const idGenerator = defineIdGenerator({
-    length: 6,
-    timestamp: false,
-    sequential: false,
+  length: 6,
+  timestamp: false,
+  sequential: false,
 });
-``` 
-
-## Other Languages
-
-[Python](https://github.com/kawaiior/milkid-for-python) - kawaiior
-
-## See Also
-
-[nanoid](https://github.com/ai/nanoid) - A small, fast unique string ID generator.
-
-[ulid](https://github.com/ulid/javascript) - A time-ordered unique string ID generator.
-
-[cuid2](https://github.com/paralleldrive/cuid2) - A unique ID generator that takes more security into consideration. 
+```

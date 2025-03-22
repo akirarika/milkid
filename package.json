@@ -1,21 +1,21 @@
 {
   "name": "milkid",
-  "version": "2.0.6",
+  "private": true,
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "build": "bun build ./index.ts --outdir ./dist"
+    "test": "vitest --ui",
+    "build": "bun run build.ts"
   },
-  "files": [
-    "index.ts",
-    "README.md",
-    "LICENSE"
-  ],
+  "files": ["index.ts", "README.md", "LICENSE"],
   "dependencies": {
-    "xxh3-ts": "^1.0.6"
+    "@types/bun": "^1.2.5",
+    "typescript": "^5.8.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@types/node": "^22.10.2",
+    "@vitest/ui": "2.1.9",
     "vitest": "^2.1.8"
   }
 }
