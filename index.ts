@@ -3,6 +3,7 @@ const ENCODING =
 	"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const ENCODING_FIRST_CHAR =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const DEFALUT_MAGIC_NUMBER = 733882188971;
 
 let lastTime = 0;
 let lastDecimal = 0n;
@@ -21,8 +22,11 @@ export function defineIdGenerator(options: IdGeneratorOptions) {
 	const randLength =
 		(options.length ?? 24) +
 		1 -
-		(options.timestamp ? 7 : 0) -
+		(options.timestamp ? 8 : 0) -
 		(options.fingerprint ? 5 : 0);
+	if (randLength < 0){
+		console.warn("options.length is too small, it will be ignored");
+	}
 	const maxRandDecimal = getMaxRandDecimal(randLength);
 
 	return {
@@ -34,10 +38,9 @@ export function defineIdGenerator(options: IdGeneratorOptions) {
 
 			let id = "";
 			if (options.timestamp) {
-				id += decimalToCharacter(
-					BigInt(now - (options.magicNumber ?? 733882188971)),
+				id += decimalToCharacter52(
+					BigInt(now - (options.magicNumber ?? DEFALUT_MAGIC_NUMBER)),
 				);
-				if (id.length > 7) id = id.slice(-7);
 			}
 			if (options.fingerprint) {
 				if (options.hyphen) id += "-";
@@ -75,7 +78,32 @@ export function defineIdGenerator(options: IdGeneratorOptions) {
 
 			return id;
 		},
+		characterToTimestamp(character: string, magicNumber: number = DEFALUT_MAGIC_NUMBER): number {
+			let timestamp = 0;
+			for (let i = 0; i < character.length; i++) {
+				const char = character[i];
+				const digit = ENCODING_FIRST_CHAR.indexOf(char);
+				if (digit === -1) {
+					throw new Error(`Invalid character: ${char}`);
+				}
+				timestamp = timestamp * 52 + digit;
+			}
+			return timestamp + magicNumber;
+		}
 	};
+}
+
+function decimalToCharacter52(decimal: bigint): string {
+	if (decimal <= 0n) throw new Error("decimal must be larger than 0");
+	let result = "";
+	while (decimal > 0) {
+		result = ENCODING_FIRST_CHAR[Number(decimal % 52n)] + result;
+		decimal = decimal / 52n;
+	}
+	if (result.length < 8){
+		return  result.padStart(8, "A");
+	}
+	return result;
 }
 
 function decimalToCharacter(decimal: bigint): string {
@@ -90,16 +118,6 @@ function decimalToCharacter(decimal: bigint): string {
 		}
 	}
 	return result || "0";
-}
-
-function characterToDecimal(character: string): bigint {
-	let decimal = 0n;
-	const base = BigInt(ENCODING.length);
-	for (let i = 0; i < character.length; i++) {
-		const charIndex = ENCODING.indexOf(character[i]);
-		decimal = decimal * base + BigInt(charIndex);
-	}
-	return decimal;
 }
 
 function getMaxRandDecimal(length: number): bigint {

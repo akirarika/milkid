@@ -80,7 +80,7 @@ console.log(idGenerator.createId(fingerprint));
 
 ```bash
           Aba3eJC          -      nY5EC      -   2z2SXrxk09j0
- Millisecond timestamp (7) | Fingerprint (5) | Random Bits (12)
+ Millisecond timestamp (8) | Fingerprint (5) | Random Bits (11)
 ```
 
 Milkid 的编码表由 `0-9a-zA-Z` 组成，Milkid 在常见的场景下都很安全，你甚至可以在 URL 或者 HTML 的 `class` 属性中使用（浏览器要求 `class` 必须以字母开头，Milkid 的第一个字符都一定会是一个字母）
