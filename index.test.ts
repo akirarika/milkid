@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { defineIdGenerator } from ".";
 
 test("basic", () => {
@@ -17,6 +17,22 @@ test("basic", () => {
   console.log(data);
   expect(data.size === 16).toBe(true);
 });
+
+test("A", async() => {
+  const now = 176700000
+  vi.setSystemTime(now);
+  const idGenerator = defineIdGenerator({
+    length: 24,
+    timestamp: true,
+    sequential: true,
+  });
+  console.log(now)
+  const id = idGenerator.createId();
+  console.log(id)
+  const id1 = idGenerator.getIdTimestamp(id)
+  console.log(id1)
+  expect(id1).toBe(now)
+})
 
 test(
   "one million",
