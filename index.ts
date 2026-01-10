@@ -32,7 +32,7 @@ export function defineIdGenerator(options: IdGeneratorOptions) {
       return id;
     },
     getIdTimestamp(id: string) {
-      return options.timestamp ? Number(__stringToBigInt(id.slice(0, 8).replaceAll("0", ""))) : 0;
+      return options.timestamp ? Number(__stringToBigInt(id.slice(0, 8).replace(/^0+/, ""))) : 0;
     },
   };
 }
